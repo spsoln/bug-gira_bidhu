@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# Migrations are normally tracked, but if you ever generate temp ones:
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# Secrets — never commit these
+.env
+.env.local
+*.pem
+secrets.json
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Coverage / test artifacts
+htmlcov/
+.coverage
+.pytest_cache/
+.tox/
+
+# Build
+*.egg-info/
+dist/
+build/

@@ -1,0 +1,78 @@
+{% extends 'projects/base.html' %}
+
+{% block title %}{{ project.key }} - {{ project.name }}{% endblock %}
+{% block sidebar_nav %}
+    {% include 'projects/_sidebar_project_nav.html' with project=project active='overview' %}
+{% endblock %}
+
+{% block content %}
+    <a href="{% url 'projects:project_list' %}" class="back-link">← Back to projects</a>
+
+    <div class="page-header">
+        <div>
+            <h1>{{ project.key }} <span style="color: #5e6c84; font-weight: 400;">·</span> {{ project.name }}</h1>
+            {% if project.description %}
+                <p class="page-header-meta">{{ project.description }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="page-header">
+        <form method="get" style="margin-bottom: 16px; display: flex; gap: 8px;">
+            <input type="text" name="q" value="{{ search_query }}" 
+                placeholder="Search tickets by title..." 
+                class="form-input" style="max-width: 320px;">
+            <button type="submit" class="btn btn-primary">Search</button>
+            {% if search_query %}
+                <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-ghost">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if search_query %}
+            <p style="color: #5e6c84; font-size: 13px; margin-bottom: 12px;">
+                Showing results for "<strong>{{ search_query }}</strong>"
+            </p>
+        {% endif %}
+        <h2 style="margin: 0;">All Tickets</h2>
+        <div style="display: flex; gap: 8px;">
+            <a href="{% url 'projects:ticket_create' project.id %}" class="btn btn-primary">+ Create Ticket</a>
+        </div>
+    </div>
+
+    {% if tickets %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 100px;">ID</th>
+                    <th>Title</th>
+                    <th style="width: 90px;">Type</th>
+                    <th style="width: 120px;">Status</th>
+                    <th style="width: 100px;">Priority</th>
+                    <th style="width: 130px;">Assignee</th>
+                    <th style="width: 120px;">Due Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                    <tr class="{% if ticket.status == 'cancelled' %}row-cancelled{% endif %}">
+                        <td><strong style="color: #0052cc;">{{ project.key }}-{{ ticket.id }}</strong></td>
+                        <td><a href="{% url 'projects:ticket_detail' ticket.id %}">{{ ticket.title }}</a></td>
+                        <td>{{ ticket.get_ticket_type_display }}</td>
+                        <td><span class="badge status-{{ ticket.status }}">{{ ticket.get_status_display }}</span></td>
+                        <td><span class="priority priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
+                        <td>{{ ticket.assignee.username|default:"—" }}</td>
+                        <td style="color: #5e6c84;">{{ ticket.due_date|date:"M d, Y"|default:"—" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-state">
+            {% if search_query %}
+                <p>No tickets found matching "<strong>{{ search_query }}</strong>".</p>
+            {% else %}
+                <p>No tickets yet in this project.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+{% endblock %}

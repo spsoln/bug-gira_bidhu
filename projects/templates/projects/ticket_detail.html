@@ -1,0 +1,184 @@
+{% extends 'projects/base.html' %}
+
+{% block title %}{{ ticket.project.key }}-{{ ticket.id }}: {{ ticket.title }}{% endblock %}
+{% block sidebar_nav %}
+    {% include 'projects/_sidebar_project_nav.html' with project=ticket.project active='' %}
+{% endblock %}
+
+{% block content %}
+    <a href="{% url 'projects:project_detail' ticket.project.id %}" class="back-link">← Back to {{ ticket.project.key }}</a>
+
+    <div class="page-header">
+        <div style="flex: 1;">
+            <p style="margin: 0; color: #5e6c84; font-size: 13px; font-weight: 600;">{{ ticket.project.key }}-{{ ticket.id }}</p>
+            <h1>{{ ticket.title }}</h1>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <form method="post" action="{% url 'projects:ticket_delete' ticket.id %}" style="display: inline;"
+                onsubmit="return confirm('⚠️ Are you sure you want to PERMANENTLY DELETE this ticket?\n\nThis cannot be undone. All comments will also be deleted.\n\nIf you just want to mark it as cancelled (keep history), click \'Cancel\' on the ticket instead.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost" style="color: #de350b; border-color: #ffbdad;">Delete</button>
+            </form>
+            {% if ticket.status != 'cancelled' %}
+                <a href="{% url 'projects:ticket_cancel' ticket.id %}" class="btn btn-ghost" style="color: #97461c; border-color: #ffe380;">Cancel</a>
+            {% endif %}
+            <a href="{% url 'projects:ticket_edit' ticket.id %}" class="btn btn-primary">Edit</a>
+        </div>
+    </div>
+
+    {% if ticket.status == 'cancelled' %}
+        <div class="alert alert-error" style="margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <strong style="font-size: 14px;">🚫 This ticket has been cancelled</strong>
+            </div>
+            <div style="font-size: 13px;">
+                <strong>Reason:</strong> {{ ticket.cancellation_reason }}
+            </div>
+            {% if ticket.cancelled_by %}
+                <div style="font-size: 12px; margin-top: 6px; color: #97461c;">
+                    Cancelled by <strong>{{ ticket.cancelled_by.username }}</strong>
+                    {% if ticket.cancelled_at %}
+                        on {{ ticket.cancelled_at|date:"M d, Y H:i" }}
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+    <div style="display: grid; grid-template-columns: 1fr 280px; gap: 24px;">
+        <!-- Main content -->
+        <div>
+            {% if ticket.description %}
+                <div class="card-box">
+                    <h2>Description</h2>
+                    <div style="color: #42526e;">{{ ticket.description|linebreaks }}</div>
+                </div>
+            {% endif %}
+
+            <div class="card-box">
+            <h2>Comments <span style="color: #5e6c84; font-weight: 400;">({{ comments.count }})</span></h2>
+
+            <!-- Add Comment Form -->
+            <form method="post" action="{% url 'projects:comment_create' ticket.id %}" style="margin-bottom: 20px;">
+                {% csrf_token %}
+                <div style="display: flex; gap: 8px; align-items: flex-start;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #0052cc; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; flex-shrink: 0;">
+                        {{ user.username.0|upper }}
+                    </div>
+                    <div style="flex: 1;">
+                        {{ comment_form.body }}
+                        {% if comment_form.body.errors %}
+                            <div class="form-error">{{ comment_form.body.errors|join:", " }}</div>
+                        {% endif %}
+                        <div style="margin-top: 8px;">
+                            <button type="submit" class="btn btn-primary" style="padding: 6px 14px; font-size: 13px;">Add Comment</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Existing Comments List -->
+            {% if comments %}
+                {% for comment in comments %}
+                    <div style="padding: 12px 0; border-bottom: 1px solid #ebecf0;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                            <div style="width: 28px; height: 28px; border-radius: 50%; background: #0052cc; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px;">
+                                {{ comment.author.username.0|upper|default:"?" }}
+                            </div>
+                            <strong>{{ comment.author.username|default:"Unknown" }}</strong>
+                            <span style="color: #5e6c84; font-size: 12px;">· {{ comment.created_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                        <div style="color: #42526e; padding-left: 36px;">{{ comment.body|linebreaks }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: #5e6c84; margin: 0;">No comments yet. Be the first to add one above!</p>
+            {% endif %}
+        </div>
+        </div>
+
+        <!-- Sidebar with details -->
+        <div>
+            <div class="card-box">
+                <h2 style="font-size: 14px; text-transform: uppercase; color: #5e6c84; letter-spacing: 0.5px;">Details</h2>
+                
+                <div style="margin-bottom: 12px;">
+                    <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Status</div>
+                    <span class="badge status-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Priority</div>
+                    <span class="priority priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Type</div>
+                    <div>{{ ticket.get_ticket_type_display }}</div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Assignee</div>
+                    <div>{{ ticket.assignee.username|default:"Unassigned" }}</div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Reporter</div>
+                    <div>{{ ticket.reporter.username|default:"—" }}</div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Due Date</div>
+                    <div>
+                        {% if ticket.due_date %}
+                            {{ ticket.due_date|date:"M d, Y" }}
+                        {% else %}
+                            <span style="color: #6b778c;">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Sprint</div>
+                    <div style="margin-bottom: 6px;">
+                        {% if ticket.sprint %}
+                            <strong>{{ ticket.sprint.name }}</strong>
+                        {% else %}
+                            <span style="color: #6b778c;">Backlog</span>
+                        {% endif %}
+                    </div>
+
+                    {% if ticket.sprint %}
+                        <!-- Ticket is in a sprint — offer to move it back to backlog -->
+                        <form method="post" action="{% url 'projects:move_to_sprint' ticket.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="sprint_id" value="">
+                            <input type="hidden" name="next" value="detail">
+                            <button type="submit" class="btn btn-ghost" style="font-size: 12px; padding: 4px 10px; width: 100%;">
+                                ↩ Move to Backlog
+                            </button>
+                        </form>
+                    {% else %}
+                        <!-- Ticket is in backlog — offer to move it into a sprint -->
+                        {% if available_sprints %}
+                            <form method="post" action="{% url 'projects:move_to_sprint' ticket.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="detail">
+                                <select name="sprint_id" onchange="this.form.submit()" class="form-input" style="font-size: 12px; padding: 4px 8px;">
+                                    <option value="">Move to sprint...</option>
+                                    {% for sprint in available_sprints %}
+                                        <option value="{{ sprint.id }}">{{ sprint.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                <div style="margin-bottom: 0;">
+                    <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Created</div>
+                    <div style="font-size: 13px; color: #42526e;">{{ ticket.created_at|date:"M d, Y H:i" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

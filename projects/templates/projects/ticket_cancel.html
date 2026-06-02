@@ -1,0 +1,45 @@
+{% extends 'projects/base.html' %}
+
+{% block title %}Cancel {{ ticket.project.key }}-{{ ticket.id }} - BugGira{% endblock %}
+{% block sidebar_nav %}
+    {% include 'projects/_sidebar_project_nav.html' with project=ticket.project active='' %}
+{% endblock %}
+
+{% block content %}
+    <a href="{% url 'projects:ticket_detail' ticket.id %}" class="back-link">← Back to ticket</a>
+
+    <div style="max-width: 600px; margin: 0 auto;">
+        <div class="card-box">
+            <h1 style="margin-bottom: 4px;">Cancel Ticket</h1>
+            <p style="color: #5e6c84; margin: 0 0 20px 0;">
+                You're about to cancel <strong>{{ ticket.project.key }}-{{ ticket.id }}: {{ ticket.title }}</strong>
+            </p>
+
+            <div class="alert alert-warning">
+                ⚠️ This will mark the ticket as cancelled and remove it from the active board. The ticket history will be preserved for audit purposes.
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="{{ form.reason.id_for_label }}" class="form-label">
+                        Reason for cancellation <span style="color: #de350b;">*</span>
+                    </label>
+                    {{ form.reason }}
+                    {% if form.reason.errors %}
+                        <div class="form-error">{{ form.reason.errors|join:", " }}</div>
+                    {% endif %}
+                    <div style="color: #5e6c84; font-size: 12px; margin-top: 4px;">
+                        Minimum 10 characters. This will be recorded for audit.
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn" style="background: #de350b; color: white;">Cancel This Ticket</button>
+                    <a href="{% url 'projects:ticket_detail' ticket.id %}" class="btn btn-ghost">Keep Active</a>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

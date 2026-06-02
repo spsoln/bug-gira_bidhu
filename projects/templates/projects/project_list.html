@@ -1,0 +1,39 @@
+{% extends 'projects/base.html' %}
+
+{% block title %}Projects - BugGira{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Projects</h1>
+            <p class="page-header-meta">All projects across the team</p>
+        </div>
+    </div>
+
+    {% if projects %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 100px;">Key</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th style="width: 130px;">Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project in projects %}
+                    <tr>
+                        <td><strong style="color: #0052cc;">{{ project.key }}</strong></td>
+                        <td><a href="{% url 'projects:project_detail' project.id %}">{{ project.name }}</a></td>
+                        <td style="color: #5e6c84;">{{ project.description|truncatewords:15|default:"—" }}</td>
+                        <td style="color: #5e6c84;">{{ project.created_at|date:"M d, Y" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-state">
+            <p>No projects yet. <a href="/admin/projects/project/add/">Create one in admin</a>.</p>
+        </div>
+    {% endif %}
+{% endblock %}

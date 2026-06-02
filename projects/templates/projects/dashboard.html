@@ -1,0 +1,96 @@
+{% extends 'projects/base.html' %}
+
+{% block title %}Dashboard - BugGira{% endblock %}
+
+{% block nav_dashboard_active %}active{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1>Welcome back, {{ user.username }} 👋</h1>
+            <p class="page-header-meta">Here's what's on your plate today</p>
+        </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ my_open_count }}</div>
+            <div class="stat-label">My open tickets</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="{% if my_overdue_count > 0 %}color: #de350b;{% endif %}">{{ my_overdue_count }}</div>
+            <div class="stat-label">My overdue tickets</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ active_sprint_count }}</div>
+            <div class="stat-label">Active sprints</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_projects }}</div>
+            <div class="stat-label">Projects</div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- My Tickets -->
+        <div>
+            <h2>My Tickets</h2>
+            {% if my_tickets %}
+                <div class="card-box" style="padding: 8px;">
+                    {% for ticket in my_tickets %}
+                        <a href="{% url 'projects:ticket_detail' ticket.id %}" 
+                           style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 4px; text-decoration: none; {% if not forloop.last %}border-bottom: 1px solid #ebecf0;{% endif %}"
+                           onmouseover="this.style.background='#f4f5f7'" onmouseout="this.style.background='transparent'">
+                            <span class="priority priority-{{ ticket.priority }}" style="flex-shrink: 0;">{{ ticket.get_priority_display }}</span>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="color: #172b4d; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ ticket.title }}</div>
+                                <div style="font-size: 12px; color: #5e6c84; margin-top: 2px;">
+                                    {{ ticket.project.key }}-{{ ticket.id }} · {{ ticket.get_status_display }}
+                                </div>
+                            </div>
+                            {% if ticket.due_date %}
+                                <span class="due-date {% if ticket.due_date < today %}overdue{% endif %}" style="flex-shrink: 0;">
+                                    📅 {{ ticket.due_date|date:"M d" }}
+                                </span>
+                            {% endif %}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state" style="padding: 32px;">
+                    <p>🎉 Nothing on your plate. You're all caught up!</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Active Sprints -->
+        <div>
+            <h2>Active Sprints</h2>
+            {% if active_sprints %}
+                {% for sprint in active_sprints %}
+                    <div class="card-box" style="border-left: 4px solid #36b37e;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div>
+                                <a href="{% url 'projects:project_board' sprint.project.id %}" style="font-weight: 600; color: #172b4d;">{{ sprint.name }}</a>
+                                <div style="font-size: 12px; color: #5e6c84;">{{ sprint.project.key }} · {{ sprint.project.name }}</div>
+                            </div>
+                            <span style="font-size: 13px; color: #5e6c84; font-weight: 600;">{{ sprint.completed_count }}/{{ sprint.ticket_count }}</span>
+                        </div>
+                        {% if sprint.ticket_count > 0 %}
+                            <div style="height: 6px; background: #ebecf0; border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; background: #36b37e; width: {% widthratio sprint.completed_count sprint.ticket_count 100 %}%;"></div>
+                            </div>
+                        {% else %}
+                            <div style="font-size: 12px; color: #5e6c84;">No tickets in this sprint yet</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state" style="padding: 32px;">
+                    <p>No active sprints right now.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

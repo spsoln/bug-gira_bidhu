@@ -1,0 +1,38 @@
+{% extends 'projects/base.html' %}
+
+{% block title %}Edit {{ ticket.project.key }}-{{ ticket.id }}{% endblock %}
+{% block sidebar_nav %}
+    {% include 'projects/_sidebar_project_nav.html' with project=ticket.project active='' %}
+{% endblock %}
+
+{% block content %}
+    <a href="{% url 'projects:ticket_detail' ticket.id %}" class="back-link">← Back to ticket</a>
+
+    <div style="max-width: 600px; margin: 0 auto;">
+        <div class="card-box">
+            <h1 style="margin-bottom: 16px;">Edit {{ ticket.project.key }}-{{ ticket.id }}</h1>
+
+            <form method="post">
+                {% csrf_token %}
+
+                {% for field in form %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="form-error">{{ field.errors|join:", " }}</div>
+                        {% endif %}
+                        {% if field.help_text %}
+                            <div style="color: #5e6c84; font-size: 12px; margin-top: 4px;">{{ field.help_text }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <a href="{% url 'projects:ticket_detail' ticket.id %}" class="btn btn-ghost">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

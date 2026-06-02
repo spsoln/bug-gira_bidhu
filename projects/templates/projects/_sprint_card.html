@@ -1,0 +1,62 @@
+<div class="card-box" style="border-left: 4px solid 
+    {% if sprint.status == 'active' %}#36b37e
+    {% elif sprint.status == 'completed' %}#5e6c84
+    {% else %}#0052cc{% endif %};">
+    
+    <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px;">
+        <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <h2 style="margin: 0;">{{ sprint.name }}</h2>
+                <span class="badge {% if sprint.status == 'active' %}status-done{% elif sprint.status == 'completed' %}status-todo{% else %}status-in_review{% endif %}">
+                    {{ sprint.get_status_display }}
+                </span>
+            </div>
+            
+            {% if sprint.goal %}
+                <p style="margin: 4px 0 8px 0; color: #42526e; cursor: help;" title="{{ sprint.goal }}">
+                    {{ sprint.goal|truncatechars:90 }}
+                </p>
+            {% endif %}
+            
+            <div style="display: flex; gap: 16px; color: #5e6c84; font-size: 13px;">
+                {% if sprint.start_date and sprint.end_date %}
+                    <span>📅 {{ sprint.start_date|date:"M d" }} – {{ sprint.end_date|date:"M d, Y" }}</span>
+                {% else %}
+                    <span>📅 No dates set</span>
+                {% endif %}
+                <span>🎯 {{ sprint.completed_count }}/{{ sprint.ticket_count }} done</span>
+                {% if sprint.ticket_count > 0 %}
+                    <span style="background: #ebecf0; padding: 2px 8px; border-radius: 10px; font-weight: 600;">
+                        {% widthratio sprint.completed_count sprint.ticket_count 100 %}% complete
+                    </span>
+                {% endif %}
+            </div>
+
+            {% if sprint.ticket_count > 0 %}
+                <div style="margin-top: 12px; height: 6px; background: #ebecf0; border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; background: #36b37e; width: {% widthratio sprint.completed_count sprint.ticket_count 100 %}%;"></div>
+                </div>
+            {% endif %}
+        </div>
+        
+        {% if user.is_staff %}
+            <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                {% if sprint.status == 'planned' %}
+                    <form method="post" action="{% url 'projects:update_sprint_status' sprint.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="active">
+                        <button type="submit" class="btn btn-success">Start Sprint</button>
+                    </form>
+                {% elif sprint.status == 'active' %}
+                    <form method="post" action="{% url 'projects:update_sprint_status' sprint.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="completed">
+                        <button type="submit" class="btn btn-neutral">Complete Sprint</button>
+                    </form>
+                {% endif %}
+                
+                <a href="/admin/projects/sprint/{{ sprint.id }}/change/" class="btn btn-ghost" style="font-size: 13px; padding: 6px 12px;">Edit</a>
+            </div>
+        {% endif %}
+    </div>
+</div>

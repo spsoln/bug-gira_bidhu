@@ -1,0 +1,66 @@
+{% extends 'projects/base.html' %}
+
+{% block title %}{{ project.key }} Sprints - BugGira{% endblock %}
+{% block sidebar_nav %}
+    {% include 'projects/_sidebar_project_nav.html' with project=project active='sprints' %}
+{% endblock %}
+
+{% block content %}
+    <a href="{% url 'projects:project_detail' project.id %}" class="back-link">← Back to {{ project.key }}</a>
+
+    <div class="page-header">
+        <div>
+            <h1>{{ project.key }} Sprints</h1>
+            <p class="page-header-meta">Manage your sprints and track progress</p>
+        </div>
+        {% if user.is_staff %}
+            <a href="/admin/projects/sprint/add/" class="btn btn-primary">+ New Sprint</a>
+        {% endif %}
+    </div>
+
+    {% if current_sprints or completed_sprints %}
+        <!-- Active & Planned sprints -->
+        {% if current_sprints %}
+            {% for sprint in current_sprints %}
+                {% include 'projects/_sprint_card.html' %}
+            {% endfor %}
+        {% else %}
+            <div class="empty-state" style="padding: 24px;">
+                <p>No active or planned sprints. {% if user.is_staff %}<a href="/admin/projects/sprint/add/">Create one</a>.{% endif %}</p>
+            </div>
+        {% endif %}
+
+        <!-- Completed sprints (collapsible) -->
+        {% if completed_sprints %}
+            <div style="margin-top: 24px;">
+                <div onclick="toggleCompleted()" style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; padding: 12px 0; color: #5e6c84; font-weight: 600;">
+                    <span id="completed-toggle-icon" style="display: inline-block; transition: transform 0.2s; transform: rotate(-90deg);">▼</span>
+                    Completed Sprints ({{ completed_sprints|length }})
+                </div>
+                <div id="completed-sprints" style="display: none;">
+                    {% for sprint in completed_sprints %}
+                        {% include 'projects/_sprint_card.html' %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <p>No sprints yet. {% if user.is_staff %}<a href="/admin/projects/sprint/add/">Create your first sprint</a>.{% else %}Ask an admin to create one.{% endif %}</p>
+        </div>
+    {% endif %}
+
+    <script>
+        function toggleCompleted() {
+            const section = document.getElementById('completed-sprints');
+            const icon = document.getElementById('completed-toggle-icon');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                section.style.display = 'none';
+                icon.style.transform = 'rotate(-90deg)';
+            }
+        }
+    </script>
+{% endblock %}

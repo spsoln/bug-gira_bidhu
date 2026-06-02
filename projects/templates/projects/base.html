@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BugGira{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'projects/style.css' %}">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="app-layout">
+        {% if user.is_authenticated %}
+            <aside class="sidebar">
+                <div class="sidebar-brand">
+                    <span class="brand-badge">🐈‍⬛</span> BugGira
+                </div>
+
+                {% block sidebar_context %}{% endblock %}
+
+                <div class="sidebar-section">
+                    {% block sidebar_nav %}
+                        <a class="nav-item {% block nav_dashboard_active %}{% endblock %}" href="{% url 'projects:dashboard' %}">
+                            <span class="nav-icon">▥</span> Dashboard
+                        </a>
+                        <a class="nav-item {% block nav_projects_active %}{% endblock %}" href="{% url 'projects:project_list' %}">
+                            <span class="nav-icon">▦</span> All Projects
+                        </a>
+                    {% endblock %}
+                </div>
+
+                <div class="sidebar-footer">
+                    <div class="sidebar-user">
+                        <div class="sidebar-avatar">{{ user.username.0|upper }}</div>
+                        <div class="sidebar-username">{{ user.username }}</div>
+                    </div>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-sidebar-logout">Logout</button>
+                    </form>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #dfe1e6; text-align: center; font-size: 11px; color: #7d8896;">
+                        Built by <strong style="color: #44546f;">Bidhu Tiwari</strong><br>
+                        🐈‍⬛ Bug-Gira · v1.0
+                    </div>
+                </div>
+            </aside>
+        {% endif %}
+
+        <div class="app-content">
+            <main>
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+</body>
+</html>

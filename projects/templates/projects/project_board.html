@@ -1,0 +1,137 @@
+{% extends 'projects/base.html' %}
+
+{% block title %}{{ project.key }} Board - BugGira{% endblock %}
+{% block sidebar_nav %}
+    {% include 'projects/_sidebar_project_nav.html' with project=project active='board' %}
+{% endblock %}
+
+{% block content %}
+    <a href="{% url 'projects:project_detail' project.id %}" class="back-link">← Back to {{ project.key }}</a>
+
+    <div class="page-header">
+        <div>
+            <h1>{{ project.key }} Board</h1>
+            {% if active_sprint %}
+                <p class="page-header-meta">
+                    <strong style="color: #36b37e;{% if active_sprint.goal %} cursor: help; border-bottom: 1px dashed #36b37e;{% endif %}"
+                            {% if active_sprint.goal %}title="Sprint Goal: {{ active_sprint.goal }}"{% endif %}>
+                        ● {{ active_sprint.name }}
+                    </strong>
+                    {% if active_sprint.start_date and active_sprint.end_date %}
+                        · {{ active_sprint.start_date|date:"M d" }} – {{ active_sprint.end_date|date:"M d, Y" }}
+                    {% endif %}
+                </p>
+            {% else %}
+                <div class="alert alert-warning" style="margin-top: 8px; display: inline-block;">
+                    No active sprint. <a href="{% url 'projects:project_sprints' project.id %}">Start a sprint</a> to see tickets on the board.
+                </div>
+            {% endif %}
+        </div>
+        <a href="{% url 'projects:ticket_create' project.id %}" class="btn btn-primary">+ Create Ticket</a>
+    </div>
+
+    <!-- Status header row -->
+    <div class="board-header">
+        <div class="swimlane-label-header">Assignee</div>
+        {% for status in statuses %}
+            <div class="status-header">{{ status.1 }}</div>
+        {% endfor %}
+    </div>
+
+    <!-- Swimlanes -->
+    {% for swimlane in swimlanes %}
+        <div class="swimlane" data-assignee="{{ swimlane.assignee_key }}">
+            <div class="swimlane-header" onclick="toggleSwimlane(this)">
+                <span class="toggle-icon">▼</span>
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: {% if swimlane.assignee_key == 'unassigned' %}#dfe1e6; color: #5e6c84{% else %}#0052cc; color: white{% endif %}; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px;">
+                    {{ swimlane.assignee_name.0|upper }}
+                </div>
+                <strong>{{ swimlane.assignee_name }}</strong>
+                <span class="swimlane-count">{{ swimlane.total }}</span>
+            </div>
+            <div class="swimlane-body">
+                {% for column in swimlane.columns %}
+                    <div class="column-body" 
+                         data-status="{{ column.value }}" 
+                         data-assignee="{{ swimlane.assignee_key }}">
+                        {% for ticket in column.tickets %}
+                            <div class="card" data-ticket-id="{{ ticket.id }}" data-priority="{{ ticket.priority }}">
+                                <div class="card-title">
+                                    <a href="{% url 'projects:ticket_detail' ticket.id %}">{{ ticket.title }}</a>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="ticket-id">{{ project.key }}-{{ ticket.id }}</span>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        {% if ticket.comment_count > 0 %}
+                                            <span class="comment-count" title="{{ ticket.comment_count }} comments">
+                                                💬 {{ ticket.comment_count }}
+                                            </span>
+                                        {% endif %}
+                                        <span class="priority priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span>
+                                    </div>
+                                </div>
+                                {% if ticket.due_date %}
+                                    <div class="card-footer">
+                                        <span class="due-date {% if ticket.due_date < today %}overdue{% endif %}">
+                                            📅 {{ ticket.due_date|date:"M d" }}
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endfor %}
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        function toggleSwimlane(header) {
+            header.parentElement.classList.toggle('collapsed');
+        }
+
+        document.querySelectorAll('.swimlane').forEach(function(swimlane) {
+            const assigneeKey = swimlane.dataset.assignee;
+            const columns = swimlane.querySelectorAll('.column-body');
+
+            columns.forEach(function(column) {
+                new Sortable(column, {
+                    group: 'kanban-' + assigneeKey,
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: function(evt) {
+                        const ticketId = evt.item.dataset.ticketId;
+                        const newStatus = evt.to.dataset.status;
+                        
+                        fetch(`/projects/tickets/${ticketId}/update-status/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken'),
+                            },
+                            body: JSON.stringify({ status: newStatus }),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                alert('Failed to update ticket status');
+                                location.reload();
+                            }
+                        })
+                        .catch(err => {
+                            alert('Error updating ticket: ' + err);
+                            location.reload();
+                        });
+                    }
+                });
+            });
+        });
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+    </script>
+{% endblock %}
