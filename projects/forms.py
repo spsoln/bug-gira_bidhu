@@ -1,5 +1,8 @@
 from django import forms
 from .models import Ticket, Comment
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
+import os
 
 
 class TicketForm(forms.ModelForm):
@@ -58,3 +61,43 @@ class CancelTicketForm(forms.Form):
             'min_length': 'Please provide a more detailed reason (at least 10 characters).',
         }
     )        
+
+class SignUpForm(UserCreationForm):
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'you@company.com',
+        }),
+    )
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password1', 'password2']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Style the inherited fields (username, password1, password2)
+        for field_name in ['username', 'password1', 'password2']:
+            self.fields[field_name].widget.attrs['class'] = 'form-input'
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').lower()
+        # Restrict signups to the company domain (set via env var)
+        allowed_domain = os.environ.get('ALLOWED_SIGNUP_DOMAIN', '').strip().lower()
+        if allowed_domain:
+            if not email.endswith('@' + allowed_domain):
+                raise forms.ValidationError(
+                    f'Signups are restricted to @{allowed_domain} email addresses.'
+                )
+        # Prevent duplicate emails
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('An account with this email already exists.')
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        if commit:
+            user.save()
+        return user    

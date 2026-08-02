@@ -3,8 +3,10 @@ from django.shortcuts import render, get_object_or_404
 from django.db import models
 from .models import Project, Ticket, Sprint
 from django.utils import timezone
-from .forms import TicketForm, CommentForm, CancelTicketForm
+from .forms import TicketForm, CommentForm, CancelTicketForm, SignUpForm
 from datetime import date
+from django.contrib.auth import login
+
 
 
 @login_required
@@ -338,3 +340,20 @@ def dashboard(request):
         'total_projects': total_projects,
         'today': date.today(),
     })
+
+def signup(request):
+    # If already logged in, no need to sign up
+    if request.user.is_authenticated:
+        return redirect('projects:dashboard')
+
+    if request.method == 'POST':
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Log the new user in immediately after signup
+            login(request, user)
+            return redirect('projects:dashboard')
+    else:
+        form = SignUpForm()
+
+    return render(request, 'registration/signup.html', {'form': form})

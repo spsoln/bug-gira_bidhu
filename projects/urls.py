@@ -5,6 +5,7 @@ app_name = 'projects'
 
 urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('signup/', views.signup, name='signup'),
     path('', views.project_list, name='project_list'),
     path('<int:project_id>/', views.project_detail, name='project_detail'),
     path('<int:project_id>/board/', views.project_board, name='project_board'),
