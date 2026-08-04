@@ -8,7 +8,7 @@ Licensed under the MIT License. See LICENSE for details.
 from django.test import TestCase
 from django.contrib.auth.models import User
 from .models import Project, Ticket, Sprint, Comment
-
+from django.test import override_settings
 
 class ProjectModelTest(TestCase):
     def setUp(self):
@@ -272,4 +272,80 @@ class MoveToBacklogTest(TestCase):
             {"sprint_id": str(self.sprint.id)},
         )
         self.ticket.refresh_from_db()
-        self.assertEqual(self.ticket.sprint, self.sprint)           
+        self.assertEqual(self.ticket.sprint, self.sprint)     
+
+
+
+
+class SignUpTest(TestCase):
+    def test_signup_page_loads(self):
+        """The signup page is publicly accessible."""
+        response = self.client.get(reverse("projects:signup"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_successful_signup_creates_user_and_logs_in(self):
+        """A valid signup creates the user and logs them in."""
+        response = self.client.post(
+            reverse("projects:signup"),
+            {
+                "username": "newperson",
+                "email": "newperson@example.com",
+                "password1": "SecurePass123!",
+                "password2": "SecurePass123!",
+            },
+        )
+        # Redirects to dashboard on success
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("projects:dashboard"), response.url)
+        # User was created
+        self.assertTrue(User.objects.filter(username="newperson").exists())
+
+    def test_signup_password_mismatch_fails(self):
+        """Mismatched passwords do not create a user."""
+        self.client.post(
+            reverse("projects:signup"),
+            {
+                "username": "badperson",
+                "email": "badperson@example.com",
+                "password1": "SecurePass123!",
+                "password2": "DifferentPass123!",
+            },
+        )
+        self.assertFalse(User.objects.filter(username="badperson").exists())
+
+    def test_duplicate_email_rejected(self):
+        """Signing up with an existing email is rejected."""
+        User.objects.create_user(
+            username="first", email="taken@example.com", password="SecurePass123!"
+        )
+        self.client.post(
+            reverse("projects:signup"),
+            {
+                "username": "second",
+                "email": "taken@example.com",
+                "password1": "SecurePass123!",
+                "password2": "SecurePass123!",
+            },
+        )
+        # Second user should NOT be created
+        self.assertFalse(User.objects.filter(username="second").exists())
+
+    @override_settings()
+    def test_domain_restriction_blocks_wrong_domain(self):
+        """When a domain is configured, other domains are rejected."""
+        import os
+        os.environ["ALLOWED_SIGNUP_DOMAIN"] = "mycompany.com"
+        try:
+            self.client.post(
+                reverse("projects:signup"),
+                {
+                    "username": "outsider",
+                    "email": "outsider@gmail.com",
+                    "password1": "SecurePass123!",
+                    "password2": "SecurePass123!",
+                },
+            )
+            self.assertFalse(User.objects.filter(username="outsider").exists())
+        finally:
+            # Clean up so other tests aren't affected
+            del os.environ["ALLOWED_SIGNUP_DOMAIN"]              

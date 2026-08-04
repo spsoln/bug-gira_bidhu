@@ -58,3 +58,6 @@ htmlcov/
 *.egg-info/
 dist/
 build/
+
+# Database backups — never commit these (they contain real data)
+backups/
