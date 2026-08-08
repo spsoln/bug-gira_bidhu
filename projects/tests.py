@@ -348,4 +348,87 @@ class SignUpTest(TestCase):
             self.assertFalse(User.objects.filter(username="outsider").exists())
         finally:
             # Clean up so other tests aren't affected
-            del os.environ["ALLOWED_SIGNUP_DOMAIN"]              
+            del os.environ["ALLOWED_SIGNUP_DOMAIN"]   
+
+from django.core import mail
+
+
+class EmailNotificationTest(TestCase):
+    def setUp(self):
+        self.reporter = User.objects.create_user(
+            username="reporter", password="testpass123", email="reporter@example.com"
+        )
+        self.assignee = User.objects.create_user(
+            username="assignee", password="testpass123", email="assignee@example.com"
+        )
+        self.other = User.objects.create_user(
+            username="other", password="testpass123", email="other@example.com"
+        )
+        self.project = Project.objects.create(key="BAT", name="Test Project")
+        self.client.login(username="reporter", password="testpass123")
+
+    def test_email_sent_on_create_with_assignee(self):
+        """Creating a ticket with an assignee sends them an email."""
+        self.client.post(
+            reverse("projects:ticket_create", args=[self.project.id]),
+            {
+                "title": "Assigned ticket",
+                "ticket_type": "task",
+                "priority": "medium",
+                "status": "todo",
+                "assignee": self.assignee.id,
+            },
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("assignee@example.com", mail.outbox[0].to)
+        self.assertIn("Assigned ticket", mail.outbox[0].subject)
+
+    def test_no_email_when_no_assignee(self):
+        """Creating a ticket with no assignee sends no email."""
+        self.client.post(
+            reverse("projects:ticket_create", args=[self.project.id]),
+            {
+                "title": "Unassigned ticket",
+                "ticket_type": "task",
+                "priority": "medium",
+                "status": "todo",
+            },
+        )
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_email_sent_on_reassignment(self):
+        """Changing a ticket's assignee to a new person emails them."""
+        ticket = Ticket.objects.create(
+            project=self.project, title="A ticket", assignee=self.assignee
+        )
+        mail.outbox = []  # clear any setup mail
+        self.client.post(
+            reverse("projects:ticket_edit", args=[ticket.id]),
+            {
+                "title": "A ticket",
+                "ticket_type": "task",
+                "priority": "medium",
+                "status": "todo",
+                "assignee": self.other.id,  # reassign to someone new
+            },
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("other@example.com", mail.outbox[0].to)
+
+    def test_no_email_when_assignee_unchanged(self):
+        """Editing a ticket without changing assignee sends no email."""
+        ticket = Ticket.objects.create(
+            project=self.project, title="A ticket", assignee=self.assignee
+        )
+        mail.outbox = []
+        self.client.post(
+            reverse("projects:ticket_edit", args=[ticket.id]),
+            {
+                "title": "A ticket EDITED",  # changed title, same assignee
+                "ticket_type": "task",
+                "priority": "high",          # changed priority too
+                "status": "todo",
+                "assignee": self.assignee.id,  # same assignee
+            },
+        )
+        self.assertEqual(len(mail.outbox), 0)                       

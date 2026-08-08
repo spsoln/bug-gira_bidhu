@@ -6,7 +6,7 @@ from django.utils import timezone
 from .forms import TicketForm, CommentForm, CancelTicketForm, SignUpForm
 from datetime import date
 from django.contrib.auth import login
-
+from .notifications import notify_ticket_assigned
 
 
 @login_required
@@ -145,6 +145,9 @@ def ticket_create(request, project_id):
             ticket.project = project
             ticket.reporter = request.user
             ticket.save()
+            # Notify the assignee if one was set
+            if ticket.assignee:
+                notify_ticket_assigned(ticket)
             return redirect('projects:project_board', project_id=project.id)
     else:
         form = TicketForm()
@@ -159,9 +162,14 @@ def ticket_edit(request, ticket_id):
     ticket = get_object_or_404(Ticket, id=ticket_id)
     
     if request.method == 'POST':
+        # Remember who was assigned before the edit
+        old_assignee_id = ticket.assignee_id
         form = TicketForm(request.POST, instance=ticket)
         if form.is_valid():
-            form.save()
+            updated_ticket = form.save()
+            # Notify only if the assignee changed to a new person
+            if updated_ticket.assignee_id and updated_ticket.assignee_id != old_assignee_id:
+                notify_ticket_assigned(updated_ticket)
             return redirect('projects:ticket_detail', ticket_id=ticket.id)
     else:
         form = TicketForm(instance=ticket)
@@ -170,7 +178,6 @@ def ticket_edit(request, ticket_id):
         'ticket': ticket,
         'form': form,
     })
-
 @login_required
 def project_backlog(request, project_id):
     project = get_object_or_404(Project, id=project_id)
@@ -357,3 +364,4 @@ def signup(request):
         form = SignUpForm()
 
     return render(request, 'registration/signup.html', {'form': form})
+

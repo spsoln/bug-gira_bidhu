@@ -264,3 +264,26 @@ if SENTRY_DSN:
         # Tag events with the environment
         environment=os.environ.get("SENTRY_ENVIRONMENT", "development"),
     )
+
+# ===== EMAIL =====
+# Backend is swappable via env var. Console backend (default) prints
+# emails to the terminal — perfect for development. Production sets
+# EMAIL_BACKEND to the SMTP backend via environment variables.
+
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+
+# SMTP settings (only used when EMAIL_BACKEND is the SMTP backend)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+
+# The "from" address on notification emails
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Bug-Gira <noreply@bug-gira.local>")
+
+# Base URL used to build links in emails (set to real domain in production)
+SITE_URL = os.environ.get("SITE_URL", "http://127.0.0.1:8000")    
