@@ -61,3 +61,6 @@ build/
 
 # Database backups — never commit these (they contain real data)
 backups/
+
+# Log files — runtime output, not for the repo
+logs/

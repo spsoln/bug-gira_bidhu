@@ -192,3 +192,75 @@ if not DEBUG:
 
     # Clickjacking protection
     X_FRAME_OPTIONS = "DENY"
+
+# ===== LOGGING =====
+# Tool-agnostic logging. Works regardless of which monitoring service
+# (Sentry, Datadog, Splunk, plain files) the org uses.
+
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{asctime} [{levelname}] {name}: {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "[{levelname}] {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOG_DIR / "buggira.log",
+            "maxBytes": 5 * 1024 * 1024,  # 5 MB per file
+            "backupCount": 5,             # keep 5 rotated files
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console", "file"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Log our own app's messages
+        "projects": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
+# ===== ERROR MONITORING (Sentry) =====
+# Isolated, optional layer. Activates only if SENTRY_DSN is set.
+# To swap for another tool (Datadog, etc.) or remove: delete this block.
+# The logging config above is tool-agnostic and stays regardless.
+
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "").strip()
+
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        # Capture a fraction of performance traces (0.1 = 10% of requests)
+        traces_sample_rate=0.1,
+        # Attach user info (username) to errors for easier debugging
+        send_default_pii=True,
+        # Tag events with the environment
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "development"),
+    )
