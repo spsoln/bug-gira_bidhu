@@ -1,4 +1,5 @@
 {% extends 'projects/base.html' %}
+{% load static %}
 
 {% block title %}{{ project.key }} Board - BugGira{% endblock %}
 {% block sidebar_nav %}
@@ -85,7 +86,7 @@
         </div>
     {% endfor %}
 
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="{% static 'projects/vendor/Sortable.min.js' %}"></script>
     <script>
         function toggleSwimlane(header) {
             header.parentElement.classList.toggle('collapsed');
