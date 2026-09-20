@@ -56,10 +56,13 @@ def project_board(request, project_id):
     active_sprint = project.sprints.filter(status='active').first()
     
     # Only show tickets in the active sprint (if one exists)
+        # Only show tickets in the active sprint (if one exists)
     if active_sprint:
         all_tickets = active_sprint.tickets.exclude(status='cancelled').annotate(
-          comment_count=models.Count('comments')
+            comment_count=models.Count('comments')
         ).order_by('-created_at')
+    else:
+        all_tickets = project.tickets.none()  # No active sprint = empty board
     
     # Group tickets by assignee, then by status
     swimlanes_dict = {}

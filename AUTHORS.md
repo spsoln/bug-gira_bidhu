@@ -2,7 +2,7 @@
 
 ## Original Author
 
-**Bidhu Tiwari** — Creator and primary developer
+**Bidhu Shekhar Tiwari** — Creator and primary developer
 - Created: June 2026
 - Contact: solutionssp000@gmail.com
 - GitHub: @spsoln

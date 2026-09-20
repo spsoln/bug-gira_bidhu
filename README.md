@@ -2,7 +2,7 @@
 
 A lightweight project management and ticket tracking tool — a self-hosted alternative to Test Management for small teams.
 
-Built from scratch as a personal project by **[Bidhu Tiwari]** ([June 2026]).
+Built from scratch as a personal project by **[Bidhu Shekhar Tiwari]** ([June 2026]).
 
 ---
 
@@ -74,7 +74,7 @@ Fully functional. Currently being used as a personal/team tool. Production hosti
 
 ## Author
 
-**[Your Full Name]**
+**[Bidhu Shekhar Tiwari]**
 - Personal project, built on personal time and equipment
 - Contact: solutionssp000@gmail.com 
 - GitHub: @spsoln
