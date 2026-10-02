@@ -431,4 +431,76 @@ class EmailNotificationTest(TestCase):
                 "assignee": self.assignee.id,  # same assignee
             },
         )
-        self.assertEqual(len(mail.outbox), 0)                       
+        self.assertEqual(len(mail.outbox), 0)    
+
+class TicketDeletePermissionTest(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username="admin", password="testpass123", is_staff=True
+        )
+        self.regular = User.objects.create_user(
+            username="regular", password="testpass123"
+        )
+        self.project = Project.objects.create(key="BAT", name="Test Project")
+        self.ticket = Ticket.objects.create(project=self.project, title="A ticket")
+
+    def test_non_staff_cannot_delete(self):
+        """A regular user cannot permanently delete a ticket."""
+        self.client.login(username="regular", password="testpass123")
+        self.client.post(reverse("projects:ticket_delete", args=[self.ticket.id]))
+        self.assertTrue(Ticket.objects.filter(id=self.ticket.id).exists())
+
+    def test_staff_can_delete(self):
+        """A staff user can permanently delete a ticket."""
+        self.client.login(username="admin", password="testpass123")
+        self.client.post(reverse("projects:ticket_delete", args=[self.ticket.id]))
+        self.assertFalse(Ticket.objects.filter(id=self.ticket.id).exists())
+
+    def test_anonymous_cannot_delete(self):
+        """An unauthenticated request cannot delete a ticket."""
+        self.client.post(reverse("projects:ticket_delete", args=[self.ticket.id]))
+        self.assertTrue(Ticket.objects.filter(id=self.ticket.id).exists())
+
+
+class BoardViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="alice", password="testpass123")
+        self.project = Project.objects.create(key="BAT", name="Test Project")
+        self.client.login(username="alice", password="testpass123")
+
+    def test_board_loads_with_no_active_sprint(self):
+        """The board renders fine when the project has no active sprint."""
+        response = self.client.get(
+            reverse("projects:project_board", args=[self.project.id])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["swimlanes"]), 0)
+
+    def test_board_loads_with_active_sprint(self):
+        """The board shows tickets from the active sprint, grouped by assignee."""
+        sprint = Sprint.objects.create(
+            project=self.project, name="Sprint 1", status="active"
+        )
+        Ticket.objects.create(
+            project=self.project, title="In sprint", sprint=sprint, assignee=self.user
+        )
+        response = self.client.get(
+            reverse("projects:project_board", args=[self.project.id])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["swimlanes"]), 1)
+
+    def test_cancelled_tickets_excluded_from_board(self):
+        """Cancelled tickets do not appear on the board."""
+        sprint = Sprint.objects.create(
+            project=self.project, name="Sprint 1", status="active"
+        )
+        Ticket.objects.create(
+            project=self.project, title="Cancelled one", sprint=sprint,
+            assignee=self.user, status="cancelled",
+        )
+        response = self.client.get(
+            reverse("projects:project_board", args=[self.project.id])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["swimlanes"]), 0)                                   

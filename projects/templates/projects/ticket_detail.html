@@ -14,11 +14,13 @@
             <h1>{{ ticket.title }}</h1>
         </div>
         <div style="display: flex; gap: 8px;">
-            <form method="post" action="{% url 'projects:ticket_delete' ticket.id %}" style="display: inline;"
-                onsubmit="return confirm('⚠️ Are you sure you want to PERMANENTLY DELETE this ticket?\n\nThis cannot be undone. All comments will also be deleted.\n\nIf you just want to mark it as cancelled (keep history), click \'Cancel\' on the ticket instead.');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-ghost" style="color: #de350b; border-color: #ffbdad;">Delete</button>
-            </form>
+            {% if user.is_staff %}
+                <form method="post" action="{% url 'projects:ticket_delete' ticket.id %}" style="display: inline;"
+                    onsubmit="return confirm('⚠️ Are you sure you want to PERMANENTLY DELETE this ticket?\n\nThis cannot be undone. All comments will also be deleted.\n\nIf you just want to mark it as cancelled (keep history), click \'Cancel\' on the ticket instead.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-ghost" style="color: #de350b; border-color: #ffbdad;">Delete</button>
+                </form>
+            {% endif %}
             {% if ticket.status != 'cancelled' %}
                 <a href="{% url 'projects:ticket_cancel' ticket.id %}" class="btn btn-ghost" style="color: #97461c; border-color: #ffe380;">Cancel</a>
             {% endif %}

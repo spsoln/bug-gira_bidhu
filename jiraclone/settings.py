@@ -168,6 +168,12 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'projects:dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
+# ===== SESSION SECURITY =====
+# Sessions expire after a period of inactivity, and end when the browser closes.
+SESSION_COOKIE_AGE = 60 * 60 * 8          # 8 hours
+SESSION_SAVE_EVERY_REQUEST = True          # reset the clock on activity
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
 # ===== PRODUCTION SECURITY SETTINGS =====
 # These activate only when DEBUG is False (i.e., in production).
 if not DEBUG:

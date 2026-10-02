@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger("projects")
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404
 from django.db import models
@@ -9,6 +11,7 @@ from django.contrib.auth import login
 from .notifications import notify_ticket_assigned
 
 
+
 @login_required
 def project_list(request):
     projects = Project.objects.all().order_by('key')
@@ -17,7 +20,7 @@ def project_list(request):
 @login_required
 def project_detail(request, project_id):
     project = get_object_or_404(Project, id=project_id)
-    tickets = project.tickets.all()
+    tickets = project.tickets.select_related('assignee', 'project')
     
     # Apply search filter if a query was provided
     search_query = request.GET.get('q', '').strip()
@@ -58,7 +61,9 @@ def project_board(request, project_id):
     # Only show tickets in the active sprint (if one exists)
         # Only show tickets in the active sprint (if one exists)
     if active_sprint:
-        all_tickets = active_sprint.tickets.exclude(status='cancelled').annotate(
+        all_tickets = active_sprint.tickets.exclude(status='cancelled').select_related(
+            'assignee', 'project'
+        ).annotate(
             comment_count=models.Count('comments')
         ).order_by('-created_at')
     else:
@@ -129,8 +134,12 @@ def update_ticket_status(request, ticket_id):
         
         return JsonResponse({'success': True, 'ticket_id': ticket.id, 'status': new_status})
     
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    except Exception:
+        logger.exception(f"Failed to update status for ticket {ticket_id}")
+        return JsonResponse(
+            {'success': False, 'error': 'Could not update the ticket.'},
+            status=500,
+        )
     
 
 from django.shortcuts import redirect
@@ -186,7 +195,9 @@ def project_backlog(request, project_id):
     project = get_object_or_404(Project, id=project_id)
     
     # Backlog = tickets not in any sprint, excluding cancelled
-    backlog_tickets = project.tickets.filter(sprint__isnull=True).exclude(status='cancelled')
+    backlog_tickets = project.tickets.filter(sprint__isnull=True).exclude(
+        status='cancelled'
+    ).select_related('assignee', 'project')
     
     # Apply search filter if a query was provided
     search_query = request.GET.get('q', '').strip()
@@ -318,8 +329,19 @@ def ticket_cancel(request, ticket_id):
 def ticket_delete(request, ticket_id):
     ticket = get_object_or_404(Ticket, id=ticket_id)
     project_id = ticket.project.id
+
+    # Permanent deletion is restricted to administrators.
+    # Everyone else should cancel the ticket instead, which preserves history.
+    if not request.user.is_staff:
+        logger.warning(
+            f"Non-staff user '{request.user}' attempted to delete ticket {ticket_id}"
+        )
+        return redirect('projects:ticket_detail', ticket_id=ticket.id)
+
+    logger.info(f"Ticket {ticket_id} permanently deleted by '{request.user}'")
     ticket.delete()
     return redirect('projects:project_detail', project_id=project_id)
+
 
 @login_required
 def dashboard(request):
