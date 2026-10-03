@@ -1,14 +1,17 @@
 from django import forms
-from .models import Ticket, Comment
+from django.db.models import Q
+from .models import Application, Comment, Product, Ticket
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 import os
 
-
 class TicketForm(forms.ModelForm):
+    BUG_ONLY_FIELDS = ('application', 'product')
+
     class Meta:
         model = Ticket
-        fields = ['title', 'description', 'ticket_type', 'priority', 'status', 'assignee', 'due_date']
+        fields = ['title', 'description', 'ticket_type', 'application', 'product',
+                  'priority', 'status', 'assignee', 'due_date']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-input',
@@ -21,15 +24,40 @@ class TicketForm(forms.ModelForm):
                 'placeholder': 'Add more details...',
             }),
             'ticket_type': forms.Select(attrs={'class': 'form-input'}),
+            'application': forms.Select(attrs={'class': 'form-input'}),
+            'product': forms.Select(attrs={'class': 'form-input'}),
             'priority': forms.Select(attrs={'class': 'form-input'}),
             'status': forms.Select(attrs={'class': 'form-input'}),
             'assignee': forms.Select(attrs={'class': 'form-input'}),
-            'due_date': forms.DateInput(attrs={
-                'class': 'form-input',
-                'type': 'date',
-            }),
+            'due_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Offer only active records, but keep the current value selectable when
+        # editing a ticket whose application or product has since been retired.
+        self.fields['application'].queryset = Application.objects.filter(
+            Q(is_active=True) | Q(pk=self.instance.application_id)
+        )
+        self.fields['product'].queryset = Product.objects.filter(
+            Q(is_active=True) | Q(pk=self.instance.product_id)
+        )
+        self.fields['application'].empty_label = 'Select an application'
+        self.fields['product'].empty_label = 'Select a product'
+        for name in self.BUG_ONLY_FIELDS:
+            self.fields[name].help_text = 'Required for bugs.'
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('ticket_type') == 'bug':
+            for name in self.BUG_ONLY_FIELDS:
+                if not cleaned.get(name):
+                    self.add_error(name, 'This field is required for bugs.')
+        else:
+            # These fields only apply to bugs, so clear any leftover value
+            for name in self.BUG_ONLY_FIELDS:
+                cleaned[name] = None
+        return cleaned
 
 class CommentForm(forms.ModelForm):
     class Meta:

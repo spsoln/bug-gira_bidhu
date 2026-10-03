@@ -50,6 +50,8 @@ class Ticket(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='todo', db_index=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     ticket_type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='task')
+    application = models.ForeignKey('Application', on_delete=models.PROTECT, null=True, blank=True, related_name='tickets')
+    product = models.ForeignKey('Product', on_delete=models.PROTECT, null=True, blank=True, related_name='tickets')
     assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_tickets')
     reporter = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reported_tickets')
     due_date = models.DateField(null=True, blank=True, db_index=True, help_text="When does this need to be done?")
@@ -97,3 +99,30 @@ class Sprint(models.Model):
 
     def __str__(self):
         return f"{self.project.key} - {self.name}"    
+
+class Application(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Inactive applications are hidden from new tickets but kept on existing ones.",
+    )
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Product(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Inactive products are hidden from new tickets but kept on existing ones.",
+    )
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name    

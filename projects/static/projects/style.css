@@ -640,3 +640,25 @@ tr:hover td { background: #fafbfc; }
     .dashboard-grid { grid-template-columns: 1fr; }
     .sidebar { width: 200px; }
 }
+
+/* ===== FILTER BAR ===== */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.filter-bar .form-input {
+    width: auto;
+    flex: 1 1 150px;
+    min-width: 140px;
+}
+.filter-bar input[type="text"] {
+    flex: 2 1 220px;
+}
+.filter-summary {
+    color: #5e6c84;
+    font-size: 13px;
+    margin: 0 0 12px 0;
+}

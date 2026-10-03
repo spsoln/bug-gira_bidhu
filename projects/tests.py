@@ -9,6 +9,9 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from .models import Project, Ticket, Sprint, Comment
 from django.test import override_settings
+from django.db.models import ProtectedError
+from .forms import TicketForm
+from .models import Application, Product
 
 class ProjectModelTest(TestCase):
     def setUp(self):
@@ -503,4 +506,133 @@ class BoardViewTest(TestCase):
             reverse("projects:project_board", args=[self.project.id])
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context["swimlanes"]), 0)                                   
+        self.assertEqual(len(response.context["swimlanes"]), 0)     
+
+class BugFieldsTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="alice", password="testpass123")
+        self.project = Project.objects.create(key="BAT", name="Test Project")
+        self.app = Application.objects.create(name="Mobile App")
+        self.product = Product.objects.create(name="Motor")
+        self.client.login(username="alice", password="testpass123")
+
+    def _create(self, **extra):
+        data = {"title": "A ticket", "ticket_type": "task",
+                "priority": "medium", "status": "todo"}
+        data.update(extra)
+        return self.client.post(
+            reverse("projects:ticket_create", args=[self.project.id]), data
+        )
+
+    def test_bug_requires_application_and_product(self):
+        """A bug without application and product is rejected."""
+        self._create(title="Bad bug", ticket_type="bug")
+        self.assertFalse(Ticket.objects.filter(title="Bad bug").exists())
+
+    def test_bug_with_both_fields_is_saved(self):
+        """A bug with both fields is saved with them."""
+        self._create(title="Good bug", ticket_type="bug",
+                     application=self.app.id, product=self.product.id)
+        ticket = Ticket.objects.get(title="Good bug")
+        self.assertEqual(ticket.application, self.app)
+        self.assertEqual(ticket.product, self.product)
+
+    def test_task_does_not_need_them(self):
+        """A task can be created without application or product."""
+        self._create(title="Plain task")
+        self.assertIsNone(Ticket.objects.get(title="Plain task").application)
+
+    def test_task_discards_bug_fields(self):
+        """Application and product submitted on a non-bug are not saved."""
+        self._create(title="Sneaky task",
+                     application=self.app.id, product=self.product.id)
+        ticket = Ticket.objects.get(title="Sneaky task")
+        self.assertIsNone(ticket.application)
+        self.assertIsNone(ticket.product)
+
+    def test_changing_bug_to_task_clears_fields(self):
+        """Converting a bug to a task removes its application and product."""
+        ticket = Ticket.objects.create(
+            project=self.project, title="Was a bug", ticket_type="bug",
+            application=self.app, product=self.product,
+        )
+        self.client.post(reverse("projects:ticket_edit", args=[ticket.id]), {
+            "title": "Was a bug", "ticket_type": "task",
+            "priority": "medium", "status": "todo",
+            "application": self.app.id, "product": self.product.id,
+        })
+        ticket.refresh_from_db()
+        self.assertIsNone(ticket.application)
+        self.assertIsNone(ticket.product)
+
+    def test_inactive_product_hidden_from_new_tickets(self):
+        """A retired product is not offered when creating a ticket."""
+        self.product.is_active = False
+        self.product.save()
+        self.assertNotIn(self.product, TicketForm().fields["product"].queryset)
+
+    def test_inactive_product_kept_on_existing_ticket(self):
+        """A retired product stays selectable on a ticket that already uses it."""
+        ticket = Ticket.objects.create(
+            project=self.project, title="Old bug", ticket_type="bug",
+            application=self.app, product=self.product,
+        )
+        self.product.is_active = False
+        self.product.save()
+        form = TicketForm(instance=ticket)
+        self.assertIn(self.product, form.fields["product"].queryset)
+
+    def test_product_in_use_cannot_be_deleted(self):
+        """A product referenced by a bug is protected from deletion."""
+        Ticket.objects.create(
+            project=self.project, title="Bug", ticket_type="bug",
+            application=self.app, product=self.product,
+        )
+        with self.assertRaises(ProtectedError):
+            self.product.delete()  
+
+class TicketFilterTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="alice", password="testpass123")
+        self.project = Project.objects.create(key="BAT", name="Test Project")
+        self.app = Application.objects.create(name="Mobile App")
+        self.motor = Product.objects.create(name="Motor")
+        self.health = Product.objects.create(name="Health")
+        Ticket.objects.create(project=self.project, title="Motor bug", ticket_type="bug",
+                              application=self.app, product=self.motor)
+        Ticket.objects.create(project=self.project, title="Health bug", ticket_type="bug",
+                              application=self.app, product=self.health)
+        Ticket.objects.create(project=self.project, title="A task")
+        self.client.login(username="alice", password="testpass123")
+        self.url = reverse("projects:project_detail", args=[self.project.id])
+
+    def titles(self, response):
+        return {t.title for t in response.context["tickets"]}
+
+    def test_filter_by_product(self):
+        """Filtering by product returns only that product's tickets."""
+        response = self.client.get(self.url, {"product": self.motor.id})
+        self.assertEqual(self.titles(response), {"Motor bug"})
+
+    def test_filter_by_type(self):
+        """Filtering by type returns only that type."""
+        response = self.client.get(self.url, {"type": "bug"})
+        self.assertEqual(self.titles(response), {"Motor bug", "Health bug"})
+
+    def test_filters_combine(self):
+        """Multiple filters narrow the results together."""
+        response = self.client.get(self.url, {"type": "bug", "product": self.health.id})
+        self.assertEqual(self.titles(response), {"Health bug"})
+
+    def test_invalid_id_is_ignored(self):
+        """A junk product ID in the URL is ignored rather than crashing the page."""
+        response = self.client.get(self.url, {"product": "abc"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(self.titles(response)), 3)
+
+    def test_retired_product_still_filterable(self):
+        """Retired products remain available in the filter for historical reporting."""
+        self.motor.is_active = False
+        self.motor.save()
+        response = self.client.get(self.url)
+        self.assertIn(self.motor, response.context["products"])                                                

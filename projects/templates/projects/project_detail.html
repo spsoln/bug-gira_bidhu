@@ -18,26 +18,56 @@
     </div>
 
     <div class="page-header">
-        <form method="get" style="margin-bottom: 16px; display: flex; gap: 8px;">
-            <input type="text" name="q" value="{{ search_query }}" 
-                placeholder="Search tickets by title..." 
-                class="form-input" style="max-width: 320px;">
-            <button type="submit" class="btn btn-primary">Search</button>
-            {% if search_query %}
-                <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-ghost">Clear</a>
-            {% endif %}
-        </form>
-
-        {% if search_query %}
-            <p style="color: #5e6c84; font-size: 13px; margin-bottom: 12px;">
-                Showing results for "<strong>{{ search_query }}</strong>"
-            </p>
-        {% endif %}
         <h2 style="margin: 0;">All Tickets</h2>
-        <div style="display: flex; gap: 8px;">
-            <a href="{% url 'projects:ticket_create' project.id %}" class="btn btn-primary">+ Create Ticket</a>
-        </div>
+        <a href="{% url 'projects:ticket_create' project.id %}" class="btn btn-primary">+ Create Ticket</a>
     </div>
+
+    <form method="get" class="filter-bar">
+        <input type="text" name="q" value="{{ search_query }}"
+            placeholder="Search by title..." class="form-input">
+
+        <select name="type" class="form-input">
+            <option value="">All types</option>
+            {% for value, label in type_choices %}
+                <option value="{{ value }}" {% if filters.type == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="status" class="form-input">
+            <option value="">All statuses</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="application" class="form-input">
+            <option value="">All applications</option>
+            {% for app in applications %}
+                <option value="{{ app.id }}" {% if filters.application == app.id|stringformat:"s" %}selected{% endif %}>
+                    {{ app.name }}{% if not app.is_active %} (retired){% endif %}
+                </option>
+            {% endfor %}
+        </select>
+
+        <select name="product" class="form-input">
+            <option value="">All products</option>
+            {% for product in products %}
+                <option value="{{ product.id }}" {% if filters.product == product.id|stringformat:"s" %}selected{% endif %}>
+                    {{ product.name }}{% if not product.is_active %} (retired){% endif %}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-primary">Apply</button>
+        {% if filters_active %}
+            <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-ghost">Clear</a>
+        {% endif %}
+    </form>
+
+    {% if filters_active %}
+        <p class="filter-summary">{{ tickets|length }} ticket{{ tickets|length|pluralize }} match these filters</p>
+    {% endif %}
+        
 
     {% if tickets %}
         <table>
@@ -46,6 +76,7 @@
                     <th style="width: 100px;">ID</th>
                     <th>Title</th>
                     <th style="width: 90px;">Type</th>
+                    <th style="width: 190px;">Application · Product</th>
                     <th style="width: 120px;">Status</th>
                     <th style="width: 100px;">Priority</th>
                     <th style="width: 130px;">Assignee</th>
@@ -58,6 +89,13 @@
                         <td><strong style="color: #0052cc;">{{ project.key }}-{{ ticket.id }}</strong></td>
                         <td><a href="{% url 'projects:ticket_detail' ticket.id %}">{{ ticket.title }}</a></td>
                         <td>{{ ticket.get_ticket_type_display }}</td>
+                        <td style="color: #5e6c84; font-size: 13px;">
+                            {% if ticket.application or ticket.product %}
+                                {{ ticket.application|default:"—" }} · {{ ticket.product|default:"—" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
                         <td><span class="badge status-{{ ticket.status }}">{{ ticket.get_status_display }}</span></td>
                         <td><span class="priority priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
                         <td>{{ ticket.assignee.username|default:"—" }}</td>
@@ -68,8 +106,8 @@
         </table>
     {% else %}
         <div class="empty-state">
-            {% if search_query %}
-                <p>No tickets found matching "<strong>{{ search_query }}</strong>".</p>
+            {% if filters_active %}
+                <p>No tickets match these filters. <a href="{% url 'projects:project_detail' project.id %}">Clear filters</a></p>
             {% else %}
                 <p>No tickets yet in this project.</p>
             {% endif %}

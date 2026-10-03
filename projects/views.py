@@ -3,7 +3,7 @@ logger = logging.getLogger("projects")
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404
 from django.db import models
-from .models import Project, Ticket, Sprint
+from .models import Application, Product, Project, Sprint, Ticket
 from django.utils import timezone
 from .forms import TicketForm, CommentForm, CancelTicketForm, SignUpForm
 from datetime import date
@@ -20,19 +20,40 @@ def project_list(request):
 @login_required
 def project_detail(request, project_id):
     project = get_object_or_404(Project, id=project_id)
-    tickets = project.tickets.select_related('assignee', 'project')
-    
-    # Apply search filter if a query was provided
+    tickets = project.tickets.select_related('assignee', 'project', 'application', 'product')
+
     search_query = request.GET.get('q', '').strip()
     if search_query:
         tickets = tickets.filter(title__icontains=search_query)
-    
+
+    # Filters come from the URL, so a filtered view can be bookmarked or shared
+    filters = {
+        'type': request.GET.get('type', ''),
+        'status': request.GET.get('status', ''),
+        'application': request.GET.get('application', ''),
+        'product': request.GET.get('product', ''),
+    }
+    if filters['type']:
+        tickets = tickets.filter(ticket_type=filters['type'])
+    if filters['status']:
+        tickets = tickets.filter(status=filters['status'])
+    if filters['application'].isdigit():
+        tickets = tickets.filter(application_id=filters['application'])
+    if filters['product'].isdigit():
+        tickets = tickets.filter(product_id=filters['product'])
+
     tickets = tickets.order_by('-created_at')
-    
+
     return render(request, 'projects/project_detail.html', {
         'project': project,
         'tickets': tickets,
         'search_query': search_query,
+        'filters': filters,
+        'filters_active': bool(search_query) or any(filters.values()),
+        'type_choices': Ticket.TYPE_CHOICES,
+        'status_choices': Ticket.STATUS_CHOICES,
+        'applications': Application.objects.all(),
+        'products': Product.objects.all(),
     })
 
 @login_required

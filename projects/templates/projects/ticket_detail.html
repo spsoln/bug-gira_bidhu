@@ -118,6 +118,17 @@
                     <div>{{ ticket.get_ticket_type_display }}</div>
                 </div>
 
+                {% if ticket.ticket_type == 'bug' %}
+                    <div style="margin-bottom: 12px;">
+                        <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Application</div>
+                        <div>{{ ticket.application|default:"—" }}</div>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Product</div>
+                        <div>{{ ticket.product|default:"—" }}</div>
+                    </div>
+                {% endif %}
+
                 <div style="margin-bottom: 12px;">
                     <div style="color: #5e6c84; font-size: 12px; margin-bottom: 4px;">Assignee</div>
                     <div>{{ ticket.assignee.username|default:"Unassigned" }}</div>
